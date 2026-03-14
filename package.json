@@ -1,0 +1,26 @@
+{
+	"name": "catchless",
+	"description": "Lightweight Rust-inspired functional utilities for TypeScript",
+	"version": "1.0.0",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"engines": {
+		"node": "=24.6.0",
+		"pnpm": "=10.17.1"
+	},
+	"packageManager": "pnpm@10.17.1",
+	"scripts": {
+		"test": "vitest run",
+		"build": "tsc --build --clean tsconfig.build.json && tsc --build tsconfig.build.json"
+	},
+	"devDependencies": {
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.16"
+	}
+}
