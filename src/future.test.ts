@@ -4,9 +4,9 @@ import { Result } from "./result";
 
 describe("Future", () => {
 	describe("fluent api", () => {
-		test("future.isFuture", () => {
+		test("future.is_future", () => {
 			const fut = Future.of(42);
-			expect(fut.isFuture()).toBe(true);
+			expect(fut.is_future()).toBe(true);
 		});
 
 		test("future.awaitable() executes Future", async () => {

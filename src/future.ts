@@ -2,13 +2,13 @@ import { Result } from "./index";
 
 export type Future<T> = {
 	readonly awaitable: () => Promise<T>;
-	readonly isFuture: () => this is Future<T>;
+	readonly is_future: () => this is Future<T>;
 };
 
 export const Future = {
 	new: <T>(computation: () => Promise<T>): Future<T> => ({
 		awaitable: computation,
-		isFuture: (): this is Future<T> => true,
+		is_future: (): this is Future<T> => true,
 	}),
 
 	awaitable: <T>(fut: Future<T>): Promise<T> => fut.awaitable(),

@@ -44,9 +44,9 @@ export const Result = {
 			handlers.err(error),
 	}),
 
-	isOk: <T, E>(result: Result<T, E>): result is Ok<T> => result._tag === "Ok",
+	is_ok: <T, E>(result: Result<T, E>): result is Ok<T> => result._tag === "Ok",
 
-	isErr: <T, E>(result: Result<T, E>): result is Err<E> =>
+	is_err: <T, E>(result: Result<T, E>): result is Err<E> =>
 		result._tag === "Err",
 
 	map_ok:
