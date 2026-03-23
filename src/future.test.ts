@@ -22,6 +22,12 @@ describe("Future", () => {
 			expect(res).toEqual(42);
 		});
 
+		test("future.start() creates resolved Future with undefined", async () => {
+			const fut = Future.start();
+			const res = await Future.awaitable(fut);
+			expect(res).toBeUndefined();
+		});
+
 		test("future.new() wraps computation", async () => {
 			const fut = Future.new(() => Promise.resolve(42));
 			const res = await Future.awaitable(fut);

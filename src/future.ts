@@ -15,6 +15,8 @@ export const Future = {
 
 	of: <T>(value: T): Future<T> => Future.new(() => Promise.resolve(value)),
 
+	start: (): Future<undefined> => Future.of(undefined),
+
 	map:
 		<T, U>(fn: (value: T) => U) =>
 		(fut: Future<T>): Future<U> =>
