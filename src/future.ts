@@ -1,4 +1,4 @@
-import { Result } from "./index";
+import { Option, Result } from "./index";
 
 export type Future<T> = {
 	readonly awaitable: () => Promise<T>;
@@ -124,34 +124,80 @@ export const Future = {
 
 	concurrent: <T extends readonly Result<unknown, unknown>[]>(
 		options: {
-			concurrency: number;
+			concurrency: Option<number>;
 		},
 		deferred_futures: { [K in keyof T]: Future<T[K]> },
 	): Future<T> => {
-		const chunk_size = options.concurrency;
-		const chunks: Future<Result<unknown, unknown>>[][] = [];
+		return Future.new(async () => {
+			const results: Result<unknown, unknown>[] = [];
+			let next_index = 0;
+			let has_error = false;
 
-		for (let i = 0; i < deferred_futures.length; i += chunk_size) {
-			const chunk = deferred_futures.slice(i, i + chunk_size);
-			chunks.push(chunk);
-		}
-
-		return Future.new(async () =>
-			chunks.reduce<Promise<T>>(
-				async (acc, chunk) => {
-					const prev_acc = await acc;
-					if (prev_acc.some((res) => res.is_err())) {
-						// Stop now, return all results so far
-						return [...prev_acc] as unknown as T;
+			const worker = async (): Promise<void> => {
+				while (!has_error && next_index < deferred_futures.length) {
+					const index = next_index++;
+					const result = await deferred_futures[index].awaitable();
+					results[index] = result;
+					if (result.is_err()) {
+						has_error = true;
 					}
+				}
+			};
 
-					// Continue with the next chunk
-					const chunk_res = await Promise.all(chunk.map((f) => f.awaitable()));
+			// None = 0 = unlimited: run all futures concurrently
+			const worker_count = options.concurrency.unwrap_or(deferred_futures.length);
 
-					return [...prev_acc, ...chunk_res] as unknown as T;
-				},
-				Promise.resolve([] as unknown as T),
-			),
-		);
+			await Promise.all(
+				Array.from(
+					{ length: Math.min(worker_count, deferred_futures.length) },
+					worker,
+				),
+			);
+
+			return results as unknown as T;
+		});
+	},
+
+	throttled: <T extends readonly Result<unknown, unknown>[]>(
+		rate: { limit: number; per_ms: number },
+		deferred_futures: { [K in keyof T]: Future<T[K]> },
+	): Future<T> => {
+		return Future.new(async () => {
+			const results: Result<unknown, unknown>[] = [];
+			let has_error = false;
+
+			// Sliding-window gate: timestamps of futures started within the current window.
+			const timestamps: number[] = [];
+			const wait_for_slot = async (): Promise<void> => {
+				const now = Date.now();
+				while (timestamps.length > 0 && now - timestamps[0] >= rate.per_ms) {
+					timestamps.shift();
+				}
+				if (timestamps.length >= rate.limit) {
+					await new Promise<void>((r) =>
+						setTimeout(r, timestamps[0] + rate.per_ms - Date.now()),
+					);
+					return wait_for_slot();
+				}
+				timestamps.push(Date.now());
+			};
+
+			// Fire futures one-by-one respecting the rate limit; collect in-flight promises.
+			const in_flight: Promise<void>[] = [];
+			for (let i = 0; i < deferred_futures.length; i++) {
+				await wait_for_slot();
+				if (has_error) break;
+				const index = i;
+				in_flight.push(
+					deferred_futures[index].awaitable().then((result) => {
+						results[index] = result;
+						if (result.is_err()) has_error = true;
+					}),
+				);
+			}
+
+			await Promise.all(in_flight);
+			return results as unknown as T;
+		});
 	},
 };
